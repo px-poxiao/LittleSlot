@@ -1,0 +1,15 @@
+name: LittleSlot
+version: 0.1.0
+main: dev.littleslot.bukkit.LittleSlotPlugin
+api-version: '1.16'
+description: Limit LittleSkin characters per verified account.
+softdepend: [AuthMe, FastLogin, MultiLogin]
+commands:
+  littleslot:
+    description: LittleSlot management and binding
+    aliases: [lslot]
+    usage: /littleslot help
+permissions:
+  littleslot.admin:
+    description: Manage account limits and blocked profiles
+    default: op

@@ -1,0 +1,39 @@
+name: Test and preview JAR
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: Test and build preview
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run tests and build preview JAR
+        run: bash ./gradlew test jar --no-daemon
+
+      - name: Upload preview JAR
+        uses: actions/upload-artifact@v7
+        with:
+          name: LittleSlot-preview-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/libs/LittleSlot-*.jar
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,209 @@
+# LittleSlot 消息配置 / Message configuration
+# 编辑后重启服务器。支持 & 颜色代码；花括号占位符只能使用每项注释列出的名称。
+# Restart after editing. & color codes are supported; use only the placeholders listed for each entry.
+# 所有消息默认中文，您可以直接把引号内文本改成英文或其他语言。
+# Defaults are Chinese; replace the quoted text with English or another language if desired.
+
+# 玩家 /littleslot help 的用法提示；无占位符。
+# Player usage shown by /littleslot help; no placeholders.
+help-player: '&e/littleslot bind | status | release <UUID>'
+
+# 管理员帮助；无占位符。改文案不会增加或改名实际命令。
+# Admin usage; no placeholders. Editing text does not add or rename commands.
+help-admin: '&e/littleslot account <UID> | player <UUID> | limit <UID> <数字|reset> | block <UUID> | unblock <UUID> | adminrelease <UUID>'
+
+# 受限等待超过 binding-timeout-seconds 时的踢出原因；无占位符。
+# Kick reason after binding-timeout-seconds; no placeholders.
+kick-binding-timeout: '&cLittleSlot: 绑定超时，请重新加入服务器。'
+
+# 尚未生成验证地址时，提醒中的操作文字；无占位符。
+# Action text in reminders before a verification URL is ready; no placeholders.
+bind-command-hint: '使用 /littleslot bind'
+
+# 绑定提醒；{target} 是验证地址或上面的命令提示。
+# Binding reminder; {target} is the verification URL or the command hint above.
+binding-reminder: '&e请完成 LittleSkin 绑定：{target}'
+
+# 未知登录来源且 unknown-source 非 allow 时的踢出原因；无占位符。
+# Kick for unknown login source when unknown-source is not allow; no placeholders.
+kick-unknown-source: '&cLittleSlot: 无法识别本次登录来源。'
+
+# 已判定为 LittleSkin 但适配器未提供原始 UUID 时的踢出原因；无占位符。
+# Kick when a LittleSkin adapter lacks the original profile UUID; no placeholders.
+kick-missing-original-uuid: '&cLittleSlot: 缺少可信原始角色 UUID。'
+
+# 本地数据库无法完成入服名额检查时的踢出原因；无占位符。
+# Kick when the local database cannot check admission; no placeholders.
+kick-database-unavailable: '&cLittleSlot: 数据库暂时不可用。'
+
+# 验证通过时；{used} 已占名额数，{limit} 上限或下面的“无限”文案。
+# Successful admission; {used} is allocated count, {limit} is the cap or unlimited label below.
+admitted: '&aLittleSlot: 验证通过，已占 {used}/{limit} 个名额。'
+
+# 上限为 -1 时显示的文字；无占位符。
+# Label shown when the limit is -1; no placeholders.
+unlimited: '无限'
+
+# binding-required=false 时的游客放行说明；无占位符。
+# Guest allowance notice when binding-required=false; no placeholders.
+guest-allowed: '&eLittleSlot: 当前服务器未强制绑定，本次以游客身份放行。'
+
+# 需要授权且正在创建验证地址时的提示；无占位符。
+# Notice while creating a verification URL; no placeholders.
+binding-started: '&eLittleSlot: 请验证角色归属，正在生成绑定地址。'
+
+# 授权账号不拥有当前角色时的提示；无占位符。
+# Notice when the authorized account does not own this profile; no placeholders.
+account-mismatch: '&cLittleSlot: 授权账号不拥有当前角色，请使用 /littleslot bind 重试。'
+
+# 角色被管理员禁止时的踢出原因；无占位符。
+# Kick for an administrator-blocked profile; no placeholders.
+kick-blocked: '&cLittleSlot: 该角色已被禁止入服。'
+
+# 账号名额已满时的踢出原因；无占位符。
+# Kick when the account has no free slots; no placeholders.
+kick-full: '&cLittleSlot: 此 LittleSkin 账号的入服角色名额已满。'
+
+# 其他明确归属拒绝时的踢出原因；无占位符。
+# Kick for another explicit ownership denial; no placeholders.
+kick-ownership-mismatch: '&cLittleSlot: 角色归属不匹配，请重新绑定。'
+
+# OAuth 模式未配置可用凭证时的提示；无占位符。
+# Notice when the selected OAuth mode lacks usable credentials; no placeholders.
+oauth-unconfigured: '&cLittleSlot: 当前 OAuth 模式尚未配置可用的客户端。请联系管理员。'
+
+# 生成验证地址后发给玩家；{url} 是授权地址，只在本地显示给该玩家。
+# Sent when a verification URL is ready; {url} is shown only to that local player.
+verification-link: '&bLittleSlot: 请访问 {url} 完成授权。'
+
+# 自配 code 模式收到无效浏览器回调时显示的纯文本；无占位符，& 颜色在浏览器中不生效。
+# Plain browser response for an invalid self-hosted code callback; no placeholders. & colors do not render in browsers.
+oauth-code-invalid: '无效的授权回调。'
+
+# 自配 code 模式的 state 已过期或已使用时的浏览器提示；无占位符。
+# Browser response when the code-flow state is expired or already used; no placeholders.
+oauth-code-expired: '授权请求已过期或已使用。'
+
+# 用户在自配 code 模式拒绝授权时的浏览器提示；无占位符。
+# Browser response when a user denies the self-hosted code request; no placeholders.
+oauth-code-denied: '授权未完成，可以返回游戏重试。'
+
+# 自配 code 模式回调缺少授权代码时的浏览器提示；无占位符。
+# Browser response when the code-flow callback lacks a code; no placeholders.
+oauth-code-missing-code: '授权代码缺失。'
+
+# 自配 code 模式已接收授权代码后的浏览器提示；后续本地验证可能仍失败，无占位符。
+# Browser response after accepting a code; subsequent local verification may still fail. No placeholders.
+oauth-code-submitted: '授权已提交，请返回游戏等待验证。'
+
+# OAuth 已取数但本地归属保存失败时的踢出原因；无占位符。
+# Kick if OAuth retrieval succeeded but local ownership storage failed; no placeholders.
+kick-ownership-save-failed: '&cLittleSlot: 归属保存失败，请稍后重试。'
+
+# 玩家取消授权或授权会话过期；无占位符。
+# Player denied authorization or the request expired; no placeholders.
+oauth-cancelled: '&cLittleSlot: 授权已取消或过期，可使用 /littleslot bind 重试。'
+
+# 外部验证不可用而按配置临时放行时；无占位符。
+# Temporary allowance after external verification failure, if configured; no placeholders.
+oauth-temporary-allow: '&eLittleSlot: 验证服务暂不可用，本次临时放行。'
+
+# 外部验证失败且未临时放行时；无占位符。
+# External verification failure without temporary allowance; no placeholders.
+oauth-failed: '&cLittleSlot: 验证失败，请联系管理员或重试。'
+
+# 验证服务恢复，玩家重新进入受限绑定状态；{seconds} 是新的绑定期限秒数。
+# Service recovered and player is restricted again; {seconds} is the new binding deadline in seconds.
+recovery-binding: '&eLittleSlot: 验证服务已恢复，请在 {seconds} 秒内使用 /littleslot bind 验证归属。'
+
+# /littleslot status 的当前会话摘要；{state} 是内部状态名，{uid} 是 UID 或 -。
+# Current session summary for /littleslot status; {state} is internal state, {uid} is UID or -.
+status: '&eLittleSlot: 状态={state}，UID={uid}'
+
+# 玩家无在线会话时 status 的状态文字；无占位符。
+# State label for status without an online session; no placeholders.
+no-session: '无会话'
+
+# 当前无需重新绑定时的提示；无占位符。
+# Notice when binding is not required now; no placeholders.
+bind-not-needed: '&eLittleSlot: 当前无需绑定。'
+
+# 玩家还没有可用于自助释放的已验证账号时；无占位符。
+# Notice when the player has no verified account for self-release; no placeholders.
+release-not-verified: '&cLittleSlot: 请先验证自己的 LittleSkin 角色归属。'
+
+# 自助释放结果。键名对应内部 Decision；改文本不改变冷却与权限判断。
+# Self-release outcomes. Keys map to internal Decision values; text edits do not alter policy.
+release-result:
+  # 成功释放；无占位符。 / Successful release; no placeholders.
+  ALLOW_EXISTING: '&aLittleSlot: 名额已释放。'
+  # 目标角色不属于当前已验证账号；无占位符。 / Target is not owned by this verified account; no placeholders.
+  ACCOUNT_MISMATCH: '&cLittleSlot: 无权释放此角色或归属验证已过期。'
+  # 当前 UID 的自助释放仍在冷却；无占位符。 / Self-release cooldown is active for this UID; no placeholders.
+  COOLDOWN: '&cLittleSlot: 自助释放仍在冷却中。'
+  # 目标角色没有占用名额；无占位符。 / Target has no allocated slot; no placeholders.
+  NOT_ALLOCATED: '&eLittleSlot: 此角色未占用名额。'
+
+# 自助释放成功后，被释放角色在线时的踢出原因；无占位符。
+# Kick for an online profile after successful self-release; no placeholders.
+kick-self-released: '&cLittleSlot: 此角色的名额已释放。'
+
+# 自助释放数据库操作失败；无占位符。
+# Self-release database operation failed; no placeholders.
+release-database-error: '&cLittleSlot: 数据库操作失败。'
+
+# 管理命令权限不足；无占位符。
+# Missing admin permission; no placeholders.
+no-permission: '&cLittleSlot: 无权限。'
+
+# 管理员 account/player 查询结果；{summary} 是本地数据库生成的摘要。
+# Admin account/player result; {summary} is the local database summary.
+query-result: '&eLittleSlot: {summary}'
+
+# 管理员查询失败；无占位符。
+# Admin query failed; no placeholders.
+query-failed: '&cLittleSlot: 查询失败。'
+
+# 修改 UID 名额上限成功；无占位符。
+# UID limit updated; no placeholders.
+limit-updated: '&aLittleSlot: 上限已更新。'
+
+# 修改上限、禁止或解除禁止时的数据库失败；无占位符。
+# Database failure while updating a limit or block; no placeholders.
+admin-update-failed: '&cLittleSlot: 更新失败。'
+
+# 管理员设置或解除角色禁止后；无占位符。
+# Admin block/unblock completed; no placeholders.
+block-updated: '&aLittleSlot: 角色状态已更新。'
+
+# 管理员禁止在线角色时的踢出原因；无占位符。
+# Kick when an admin blocks an online profile; no placeholders.
+kick-admin-blocked: '&cLittleSlot: 此角色已被禁止入服。'
+
+# 管理员成功释放名额；无占位符。
+# Admin successfully released a slot; no placeholders.
+adminrelease-success: '&aLittleSlot: 已释放。'
+
+# 管理员释放未占名额的角色；无占位符。
+# Admin release found no slot; no placeholders.
+adminrelease-empty: '&eLittleSlot: 该角色未占名额。'
+
+# 管理员释放在线角色时的踢出原因；无占位符。
+# Kick for an online profile after admin release; no placeholders.
+kick-admin-released: '&cLittleSlot: 此角色的名额已被管理员释放。'
+
+# 管理员释放数据库操作失败；无占位符。
+# Admin release database failure; no placeholders.
+adminrelease-failed: '&cLittleSlot: 释放失败。'
+
+# 命令参数格式错误；无占位符。
+# Invalid command argument; no placeholders.
+invalid-argument: '&cLittleSlot: 参数无效。'
+
+# 子命令名称或参数数量不正确；无占位符。
+# Unknown subcommand or incorrect argument count; no placeholders.
+wrong-usage: '&cLittleSlot: 用法不正确，输入 /littleslot help 查看帮助。'
+
+# 其他实例的审计记录表明在线角色的名额或归属已变更时的踢出原因；无占位符。
+# Kick when another instance's audit shows this online profile's slot or ownership changed; no placeholders.
+kick-audit-changed: '&cLittleSlot: 此角色的名额或归属已变更。'

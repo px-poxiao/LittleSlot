@@ -1,0 +1,110 @@
+# LittleSlot 主配置 / Main configuration
+# 修改后重启服务器；当前版本没有热重载命令。
+# Restart the server after editing; this version has no live reload command.
+
+# 名额共享范围。单服用 local；群组服只有同一 MySQL 且 scope 相同才共享名额。不能包含空格。
+# Slot scope. Use local for one server; network servers share only with the same MySQL and scope. No spaces.
+scope: local
+
+# 每个 LittleSkin UID 默认可占用的角色数；-1 无限，0 禁止新增。管理员可按账号覆盖。
+# Default profiles per LittleSkin UID; -1 is unlimited, 0 prevents new slots. Admins can override per account.
+default-limit: 2
+
+# 归属快照有效天数；到期后下次进服需重新授权，但已有名额不会自动释放。
+# Ownership snapshot lifetime in days; reauthorization is needed after expiry, but existing slots remain.
+ownership-days: 30
+
+# 同一 UID 在本 scope 成功自助释放后，再次自助释放需等待的天数；管理员释放不受限。
+# Days between successful self-releases for the same UID and scope; admin releases ignore this cooldown.
+self-release-days: 7
+
+# true 要求未知归属完成绑定；false 以游客身份放行，无法保证未知角色的名额限制。
+# true requires unknown ownership to bind; false allows guest play and cannot enforce slots for unknown profiles.
+binding-required: true
+
+# 等待鉴权、查询或绑定的最长秒数，超过后踢出；故障恢复后的绑定期重新计时。
+# Maximum seconds in the restricted login/binding flow before kick; the timer restarts after recovery.
+binding-timeout-seconds: 300
+
+# 绑定时聊天提醒的秒数间隔；当前代码最少使用 10 秒，0 不表示关闭。
+# Seconds between binding reminders; currently clamped to at least 10, so 0 does not disable them.
+reminder-seconds: 30
+
+# 无法可信识别登录来源：allow 放行并记录，其他值拒绝；allow 可能让未适配插件绕过名额。
+# Unrecognized login source: allow and log, or reject with any other value; allow may bypass slots with unsupported plugins.
+unknown-source: allow
+
+# 外部 OAuth/公共端无法取数时临时放行；角色不匹配、满额、封禁等明确拒绝不受影响。
+# Temporarily allow on external OAuth/backend failure; explicit mismatch, full slots, and blocks are still denied.
+external-failure-temporary-allow: true
+
+# 临时放行玩家在线时的无计费健康检查间隔（秒）；当前代码最少使用 15 秒。
+# Non-billable health-probe interval in seconds while temporary players are online; minimum effective value is 15.
+recovery-check-seconds: 60
+
+# 每次探测成功后最多重新限制多少临时放行玩家；当前代码最少使用 1。
+# Maximum temporarily allowed players returned to binding per successful probe; minimum effective value is 1.
+recovery-batch-size: 8
+
+# 授权方式设置 / Authorization settings
+oauth:
+  # device=服主设备流，code=服主授权代码流，public=公共后端；切换后需重启。
+  # device=owner device flow, code=owner code flow, public=shared backend; restart after changing.
+  mode: device
+
+  # 自配 device/code 模式的 LittleSkin OAuth Client ID；public 不使用。设备流应用需白名单。
+  # LittleSkin Client ID for device/code; unused in public mode. Device-flow apps need approval.
+  client-id: ''
+
+  # 仅 code 模式使用的 LittleSkin Client Secret；保密，不要上传配置或贴到公开日志。
+  # LittleSkin Client Secret for code mode only; keep it out of public files and logs.
+  client-secret: ''
+
+  # 自配授权代码流回调配置；device/public 不使用。公网 HTTPS 需反向代理转发。
+  # Self-hosted code-flow callback; unused in device/public mode. Public HTTPS needs a reverse proxy.
+  code:
+    # LittleSkin 应用登记的完整 HTTPS 回调地址，需与代理转发路径一致；example.invalid 只是占位。
+    # Full registered HTTPS callback URL matching the proxy route; example.invalid is a placeholder.
+    redirect-uri: 'https://example.invalid/oauth/callback'
+
+    # 本地回调监听地址；127.0.0.1 仅接受本机代理，使用远程代理时须自行隔离网络。
+    # Local callback bind address; 127.0.0.1 accepts only a local proxy. Isolate remote proxy traffic.
+    listen-host: '127.0.0.1'
+
+    # 本地回调端口，公网 HTTPS 应转发到这里；不能与其他程序冲突。
+    # Local callback port behind public HTTPS; it must be available.
+    listen-port: 8765
+
+  # public 模式的公共后端 HTTPS 根地址，不是 LittleSkin 地址；当前示例不可使用。
+  # HTTPS root URL of the public backend, not LittleSkin; the example value is unusable.
+  public-base-url: 'https://example.invalid'
+
+  # public 模式的私密 API Key；后端据此鉴权和扣成功取数额度，不能发给玩家。
+  # Private public-mode API key; authenticates and bills successful retrievals. Never show it to players.
+  public-api-key: ''
+
+# 存储设置；切换 sqlite/mysql 不会自动迁移旧数据。
+# Storage settings; switching sqlite/mysql does not migrate old data automatically.
+database:
+  # sqlite 为单服文件，mysql 可供多服共享；改动前停服并做离线迁移。
+  # sqlite is a local file; mysql can be shared. Stop the server and migrate offline before switching.
+  type: sqlite
+
+  # SQLite 文件名，存于 plugins/LittleSlot/；请定期备份。
+  # SQLite filename under plugins/LittleSlot/; back it up regularly.
+  sqlite-file: slots.db
+
+  # mysql 模式 JDBC 连接；sqlite 模式不使用。
+  # JDBC settings for mysql mode; unused in sqlite mode.
+  mysql:
+    # 指向事先创建且可写的 MySQL 库；示例要求 TLS，证书与参数按实际环境配置。
+    # URL for a pre-created writable MySQL database; example requests TLS. Adjust certificates/options for your host.
+    url: 'jdbc:mysql://127.0.0.1:3306/littleslot?useSSL=true&serverTimezone=UTC'
+
+    # 有建表、读取和写入权限的数据库用户；共享实例都须连同一库。
+    # Database user with schema, read, and write rights; shared instances must reach the same database.
+    user: ''
+
+    # 上述数据库用户密码；请勿公开完整配置文件。
+    # Password for that database user; do not publish this configuration.
+    password: ''
