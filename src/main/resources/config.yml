@@ -22,17 +22,21 @@ self-release-days: 7
 # true requires unknown ownership to bind; false allows guest play and cannot enforce slots for unknown profiles.
 binding-required: true
 
-# 等待鉴权、查询或绑定的最长秒数，超过后踢出；故障恢复后的绑定期重新计时。
-# Maximum seconds in the restricted login/binding flow before kick; the timer restarts after recovery.
+# 等待查询、超时选择或绑定的最长秒数，超过后踢出；故障恢复后的绑定期重新计时。
+# Maximum seconds for lookup, timeout choice, or binding; the timer restarts after recovery.
 binding-timeout-seconds: 300
 
 # 绑定时聊天提醒的秒数间隔；当前代码最少使用 10 秒，0 不表示关闭。
 # Seconds between binding reminders; currently clamped to at least 10, so 0 does not disable them.
 reminder-seconds: 30
 
-# 无法可信识别登录来源：allow 放行并记录，其他值拒绝；allow 可能让未适配插件绕过名额。
-# Unrecognized login source: allow and log, or reject with any other value; allow may bypass slots with unsupported plugins.
-unknown-source: allow
+# 是否兼容正版：false 时每位进服玩家进入 LittleSkin 归属检查；true 时每次入服查询 Mojang，UUID 匹配则正版放行。
+# Premium compatibility: false checks every join against LittleSkin ownership; true queries Mojang on every join and exempts matching UUIDs.
+premium-compatibility: false
+
+# 开启正版兼容时，Mojang 连接及读取的超时毫秒数，范围 100–60000；只有超时才提示玩家自选来源。
+# Mojang connect/read timeout in milliseconds when premium compatibility is enabled, from 100 to 60000; only timeouts prompt a choice.
+premium-lookup-timeout-millis: 5000
 
 # 外部 OAuth/公共端无法取数时临时放行；角色不匹配、满额、封禁等明确拒绝不受影响。
 # Temporarily allow on external OAuth/backend failure; explicit mismatch, full slots, and blocks are still denied.

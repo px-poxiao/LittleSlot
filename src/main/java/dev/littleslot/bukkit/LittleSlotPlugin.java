@@ -38,6 +38,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.net.URI;
+import java.net.SocketTimeoutException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
@@ -57,7 +58,7 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
     private ExecutorService workers;
     private SlotService slots;
     private JdbcSlotRepository repository;
-    private SourceDetector sources;
+    private MojangLookup mojang;
     private OAuthProvider oauth;
     private MessageCatalog messages;
     private String scope;
@@ -88,7 +89,8 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
             });
             slots = new SlotService(repository, settings, Clock.systemUTC());
             lastAuditId = repository.latestAuditId(scope);
-            sources = new SourceDetector();
+            mojang = new MojangLookup(URI.create("https://api.minecraftservices.com/minecraft/profile/lookup/name/"),
+                    getConfig().getInt("premium-lookup-timeout-millis", 5000));
             String mode = getConfig().getString("oauth.mode", "device");
             if ("device".equalsIgnoreCase(mode) && !getConfig().getString("oauth.client-id", "").isEmpty())
                 oauth = new DeviceCodeProvider(getConfig().getString("oauth.client-id"), workers);
@@ -105,8 +107,8 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
             getCommand("littleslot").setExecutor(this);
             Bukkit.getScheduler().runTaskTimer(this, this::tick, 20L, 20L);
             Bukkit.getScheduler().runTaskTimer(this, this::pollAudit, 40L, 40L);
-            getLogger().info("LittleSlot ready; source=" + (sources.directLittleSkin() ? "direct LittleSkin" : "adapter/unknown")
-                    + ", scope=" + scope);
+            getLogger().info("LittleSlot ready; premium compatibility="
+                    + getConfig().getBoolean("premium-compatibility", false) + ", scope=" + scope);
         } catch (Exception error) {
             getLogger().severe("LittleSlot startup failed: " + error.getMessage());
             Bukkit.getPluginManager().disablePlugin(this);
@@ -123,7 +125,7 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
 
     @EventHandler public void onJoin(PlayerJoinEvent event) {
         sessions.put(event.getPlayer().getUniqueId(), new PlayerSession(event.getPlayer().getUniqueId()));
-        checkSource(event.getPlayer());
+        beginJoinCheck(event.getPlayer());
     }
 
     @EventHandler public void onQuit(PlayerQuitEvent event) {
@@ -143,49 +145,79 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
             Player player = Bukkit.getPlayer(session.gameUuid);
             if (player == null || !player.isOnline() || !session.restricted()) continue;
             if (now - session.restrictedSince >= timeout) {
+                session.state = PlayerSession.State.DENIED;
                 player.kickPlayer(message("kick-binding-timeout"));
                 continue;
             }
-            if (session.state == PlayerSession.State.CHECKING) checkSource(player);
-            else if (session.state == PlayerSession.State.BINDING && ((now - session.restrictedSince) / 1000) % reminder == 0) {
+            if (session.state == PlayerSession.State.BINDING && ((now - session.restrictedSince) / 1000) % reminder == 0) {
                 player.sendMessage(message("binding-reminder", "target",
                         session.bindUrl == null ? message("bind-command-hint") : session.bindUrl));
             }
         }
     }
 
-    private void checkSource(Player player) {
+    private void beginJoinCheck(Player player) {
         PlayerSession session = sessions.get(player.getUniqueId());
         if (session == null || session.state != PlayerSession.State.CHECKING) return;
-        LoginIdentity identity = sources.detect(player, session.joinedAt);
-        LoginSource source = identity.source;
-        if (source == LoginSource.WAITING) return;
-        if (source == LoginSource.PREMIUM || source == LoginSource.OTHER) {
-            session.state = PlayerSession.State.BYPASS;
+        if (!getConfig().getBoolean("premium-compatibility", false)) {
+            resolveLittleSkin(player.getUniqueId(), session.connection);
             return;
         }
-        if (source == LoginSource.UNKNOWN) {
-            if ("allow".equalsIgnoreCase(getConfig().getString("unknown-source", "allow"))) {
-                session.state = PlayerSession.State.BYPASS;
-                getLogger().warning("Unknown login source allowed for session " + session.connection);
-            } else player.kickPlayer(message("kick-unknown-source"));
-            return;
-        }
-        if (identity.originalUuid == null) {
-            player.kickPlayer(message("kick-missing-original-uuid"));
-            return;
-        }
-        session.originalUuid = identity.originalUuid;
-        UUID connection = session.connection;
+        final UUID gameUuid = player.getUniqueId(), connection = session.connection;
+        final String playerName = player.getName();
+        workers.execute(() -> {
+            try {
+                // This is deliberately uncached: a previous timeout choice must not exempt the next join.
+                UUID premiumUuid = mojang.byName(playerName);
+                try { repository.clearPremiumTimeoutChoice(scope, gameUuid); }
+                catch (Exception clearFailure) {
+                    // The record is historical only. Its cleanup must not turn a valid premium lookup into a denial.
+                    getLogger().warning("Cannot clear old premium timeout record: " + clearFailure.getMessage());
+                }
+                main(() -> {
+                    PlayerSession active = current(gameUuid, connection);
+                    if (active == null || active.state != PlayerSession.State.CHECKING) return;
+                    if (gameUuid.equals(premiumUuid)) {
+                        active.state = PlayerSession.State.BYPASS;
+                        Player target = Bukkit.getPlayer(gameUuid);
+                        if (target != null) target.sendMessage(message("premium-admitted"));
+                    } else resolveLittleSkin(gameUuid, connection);
+                });
+            } catch (SocketTimeoutException timeout) {
+                main(() -> {
+                    PlayerSession active = current(gameUuid, connection);
+                    if (active == null || active.state != PlayerSession.State.CHECKING) return;
+                    active.state = PlayerSession.State.CHOOSING;
+                    Player target = Bukkit.getPlayer(gameUuid);
+                    if (target != null) target.sendMessage(message("premium-lookup-timeout-choice"));
+                });
+            } catch (Exception error) {
+                getLogger().warning("Mojang lookup failed for " + playerName + ": " + error.getMessage());
+                main(() -> {
+                    PlayerSession active = current(gameUuid, connection);
+                    if (active != null && active.state == PlayerSession.State.CHECKING) {
+                        active.state = PlayerSession.State.DENIED;
+                        Player target = Bukkit.getPlayer(gameUuid);
+                        if (target != null) target.kickPlayer(message("kick-premium-lookup-error"));
+                    }
+                });
+            }
+        });
+    }
+
+    private void resolveLittleSkin(UUID gameUuid, UUID connection) {
+        PlayerSession session = current(gameUuid, connection);
+        if (session == null || (session.state != PlayerSession.State.CHECKING && session.state != PlayerSession.State.CHOOSING)) return;
         session.state = PlayerSession.State.RESOLVING;
         workers.execute(() -> {
             try {
-                Admission result = slots.join(scope, identity.originalUuid);
-                main(() -> applyAdmission(player.getUniqueId(), connection, result));
+                Admission result = slots.join(scope, gameUuid);
+                main(() -> applyAdmission(gameUuid, connection, result));
             } catch (Exception error) {
                 getLogger().warning("Admission database error: " + error.getMessage());
                 main(() -> {
-                    if (current(player.getUniqueId(), connection) != null) player.kickPlayer(message("kick-database-unavailable"));
+                    Player target = Bukkit.getPlayer(gameUuid);
+                    if (current(gameUuid, connection) != null && target != null) target.kickPlayer(message("kick-database-unavailable"));
                 });
             }
         });
@@ -194,7 +226,8 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
     private void applyAdmission(UUID gameUuid, UUID connection, Admission admission) {
         PlayerSession session = current(gameUuid, connection);
         Player player = Bukkit.getPlayer(gameUuid);
-        if (session == null || player == null) return;
+        if (session == null || player == null || !player.isOnline()
+                || (session.state != PlayerSession.State.RESOLVING && session.state != PlayerSession.State.BINDING)) return;
         Decision decision = admission.decision();
         if (admission.allowed()) {
             session.uid = admission.uid();
@@ -212,8 +245,8 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
             player.sendMessage(message("binding-started"));
             beginBind(player, session);
         } else if (decision == Decision.ACCOUNT_MISMATCH) {
-            session.state = PlayerSession.State.BINDING;
-            player.sendMessage(message("account-mismatch"));
+            session.state = PlayerSession.State.DENIED;
+            player.kickPlayer(message("kick-account-mismatch"));
         } else {
             session.state = PlayerSession.State.DENIED;
             player.kickPlayer(message(decision == Decision.BLOCKED ? "kick-blocked"
@@ -248,8 +281,9 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
                 try {
                     if (authorizations.get(connection) != auth) return;
                     PlayerSession active = current(gameUuid, connection);
-                    if (active == null || active.originalUuid == null) return;
-                    Admission result = slots.verifyAndJoin(scope, active.originalUuid, verified);
+                    if (active == null || active.state != PlayerSession.State.BINDING) return;
+                    // The OAuth result belongs to this local connection; the public backend never sees the UUID.
+                    Admission result = slots.verifyAndJoin(scope, gameUuid, verified);
                     main(() -> {
                         if (authorizations.remove(connection, auth)) applyAdmission(gameUuid, connection, result);
                     });
@@ -358,7 +392,7 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
         if (words.length == 0 || !(words[0].equals("/littleslot") || words[0].equals("/lslot"))) {
             event.setCancelled(true); return;
         }
-        if (words.length > 1 && !Arrays.asList("bind", "status", "help", "release").contains(words[1])) event.setCancelled(true);
+        if (words.length > 1 && !Arrays.asList("bind", "status", "help", "release", "choose").contains(words[1])) event.setCancelled(true);
     }
 
     @Override public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -379,6 +413,45 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
                 PlayerSession session = sessions.get(((Player) sender).getUniqueId());
                 if (session == null || session.state != PlayerSession.State.BINDING) sender.sendMessage(message("bind-not-needed"));
                 else beginBind((Player) sender, session);
+                return true;
+            }
+            if ("choose".equals(action) && sender instanceof Player && args.length == 2) {
+                Player player = (Player) sender;
+                PlayerSession session = sessions.get(player.getUniqueId());
+                if (session == null || session.state != PlayerSession.State.CHOOSING) {
+                    sender.sendMessage(message("premium-choice-not-needed")); return true;
+                }
+                if ("littleskin".equalsIgnoreCase(args[1])) {
+                    resolveLittleSkin(player.getUniqueId(), session.connection);
+                    return true;
+                }
+                if ("premium".equalsIgnoreCase(args[1])) {
+                    // Persist first. A failed write cannot be reported as a durable temporary allowance.
+                    session.state = PlayerSession.State.RESOLVING;
+                    UUID gameUuid = player.getUniqueId(), connection = session.connection;
+                    String playerName = player.getName();
+                    workers.execute(() -> {
+                        try {
+                            repository.recordPremiumTimeoutChoice(scope, gameUuid, playerName, System.currentTimeMillis());
+                            main(() -> {
+                                PlayerSession active = current(gameUuid, connection);
+                                if (active == null || active.state != PlayerSession.State.RESOLVING) return;
+                                active.state = PlayerSession.State.BYPASS;
+                                Player target = Bukkit.getPlayer(gameUuid);
+                                if (target != null) target.sendMessage(message("premium-temporary-allow"));
+                            });
+                        } catch (Exception error) {
+                            getLogger().warning("Cannot record premium timeout choice: " + error.getMessage());
+                            main(() -> {
+                                Player target = Bukkit.getPlayer(gameUuid);
+                                if (current(gameUuid, connection) != null && target != null)
+                                    target.kickPlayer(message("kick-database-unavailable"));
+                            });
+                        }
+                    });
+                    return true;
+                }
+                sender.sendMessage(message("premium-choice-usage"));
                 return true;
             }
             if ("release".equals(action) && sender instanceof Player && args.length == 2) {
@@ -454,7 +527,7 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
 
     private void kickLocal(UUID profile, String reason) {
         for (PlayerSession session : sessions.values()) {
-            if (!profile.equals(session.originalUuid) || session.state == PlayerSession.State.BYPASS) continue;
+            if (!profile.equals(session.gameUuid) || session.state == PlayerSession.State.BYPASS) continue;
             Player player = Bukkit.getPlayer(session.gameUuid);
             if (player != null) player.kickPlayer(reason);
         }
@@ -498,7 +571,7 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
         if (profile == null) return;
         PlayerSession session = null;
         for (PlayerSession candidate : sessions.values()) {
-            if (profile.equals(candidate.originalUuid)) { session = candidate; break; }
+            if (profile.equals(candidate.gameUuid)) { session = candidate; break; }
         }
         if (session == null || session.state == PlayerSession.State.BYPASS || session.state == PlayerSession.State.DENIED) return;
         String action = event.action();

@@ -4,7 +4,7 @@ import java.time.Clock;
 import java.util.Set;
 import java.util.UUID;
 
-/** Scope-local ownership and slot policy; callers must supply a trusted original profile UUID. */
+/** Scope-local ownership and slot policy; the caller supplies the UUID observed at join. */
 public final class SlotService {
     private final SlotRepository repository;
     private final SlotSettings settings;

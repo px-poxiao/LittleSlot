@@ -61,7 +61,8 @@ public final class DatabaseMigrator {
         new Table("ls_slots", "scope,profile,uid,allocated_at", "uid,allocated_at"),
         new Table("ls_blocks", "scope,profile,blocked_at", "blocked_at"),
         new Table("ls_cooldowns", "scope,uid,last_release", "uid,last_release"),
-        new Table("ls_audit", "id,scope,action,uid,profile,at_millis", "id,uid,at_millis")
+        new Table("ls_audit", "id,scope,action,uid,profile,at_millis", "id,uid,at_millis"),
+        new Table("ls_premium_timeout", "scope,profile,player_name,chosen_at", "chosen_at")
     };
 
     private DatabaseMigrator() { }
@@ -97,13 +98,18 @@ public final class DatabaseMigrator {
             if (source.dialect == JdbcSlotRepository.Dialect.MYSQL)
                 db.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             db.setAutoCommit(false);
-            checkSchema(db);
+            int sourceVersion = checkSchema(db, true);
             try (Writer file = Files.newBufferedWriter(destination, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
                  JsonWriter json = new JsonWriter(file)) {
                 json.beginObject();
-                json.name("schemaVersion").value(1);
+                json.name("schemaVersion").value(2);
                 for (Table table : TABLES) {
                     json.name(table.name).beginArray();
+                    // A stopped v1 database has no timeout-choice table. Export it as empty without mutating the source.
+                    if (sourceVersion == 1 && "ls_premium_timeout".equals(table.name)) {
+                        json.endArray();
+                        continue;
+                    }
                     try (Statement statement = db.createStatement(); ResultSet rows = statement.executeQuery(table.select())) {
                         while (rows.next()) {
                             json.beginArray();
@@ -127,7 +133,7 @@ public final class DatabaseMigrator {
         try (Connection db = target.open()) {
             db.setAutoCommit(false);
             try {
-                checkSchema(db);
+                checkSchema(db, false);
                 // Refuse even partially populated targets; this command never merges or overwrites live data.
                 for (Table table : TABLES) {
                     try (Statement statement = db.createStatement(); ResultSet rows = statement.executeQuery("SELECT COUNT(*) FROM " + table.name)) {
@@ -136,7 +142,7 @@ public final class DatabaseMigrator {
                 }
                 try (Reader file = Files.newBufferedReader(backup, StandardCharsets.UTF_8); JsonReader json = new JsonReader(file)) {
                     json.beginObject();
-                    if (!"schemaVersion".equals(json.nextName()) || json.nextInt() != 1) throw new IOException("Unsupported archive schema");
+                    if (!"schemaVersion".equals(json.nextName()) || json.nextInt() != 2) throw new IOException("Unsupported archive schema");
                     for (Table table : TABLES) {
                         if (!table.name.equals(json.nextName())) throw new IOException("Unexpected archive table");
                         json.beginArray();
@@ -173,9 +179,12 @@ public final class DatabaseMigrator {
         }
     }
 
-    private static void checkSchema(Connection db) throws SQLException {
+    private static int checkSchema(Connection db, boolean source) throws SQLException {
         try (Statement statement = db.createStatement(); ResultSet row = statement.executeQuery("SELECT version FROM ls_schema WHERE id=1")) {
-            if (!row.next() || row.getInt(1) != 1) throw new SQLException("Unsupported schema version");
+            if (!row.next()) throw new SQLException("Missing schema version");
+            int version = row.getInt(1);
+            if (version != 2 && !(source && version == 1)) throw new SQLException("Unsupported schema version");
+            return version;
         }
     }
 

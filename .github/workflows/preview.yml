@@ -34,6 +34,12 @@ jobs:
             selector: dev.littleslot.core.SlotServiceTest.anotherRepositoryInstanceCanObserveRevocationEvents
           - name: Database migration
             selector: dev.littleslot.core.DatabaseMigratorTest.backupAndImportPreserveSlotsBlocksAndScopeWithoutOverwritingTarget
+          - name: Premium timeout persistence and schema upgrade
+            selector: dev.littleslot.core.DatabaseMigratorTest.existingSchemaUpgradesAndTemporaryChoiceIsDurableButNeverAFreeSlot
+          - name: Mojang lookup result classification
+            selector: dev.littleslot.bukkit.MojangLookupTest.validProfileIsMatchedWhile404IsTheOnlyMissingResult
+          - name: Mojang lookup timeout
+            selector: dev.littleslot.bukkit.MojangLookupTest.timeoutIsDistinguishedFromOtherFailures
           - name: Account response parsing
             selector: dev.littleslot.oauth.LittleSkinHttpTest.convertsOnlyUidAndProfileIds
           - name: Malformed account responses

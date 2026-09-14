@@ -60,8 +60,10 @@ public final class JdbcSlotRepository implements SlotRepository {
             "CREATE INDEX IF NOT EXISTS ls_slots_by_uid ON ls_slots(scope,uid)",
             "CREATE TABLE IF NOT EXISTS ls_blocks (scope " + text + " NOT NULL, profile " + uuid + " NOT NULL, blocked_at BIGINT NOT NULL, PRIMARY KEY(scope,profile))",
             "CREATE TABLE IF NOT EXISTS ls_cooldowns (scope " + text + " NOT NULL, uid BIGINT NOT NULL, last_release BIGINT NOT NULL, PRIMARY KEY(scope,uid))",
-            "CREATE TABLE IF NOT EXISTS ls_audit (id " + auditId + ", scope " + text + " NOT NULL, action VARCHAR(32) NOT NULL, uid BIGINT NULL, profile " + uuid + " NULL, at_millis BIGINT NOT NULL)"
-            ,"CREATE INDEX IF NOT EXISTS ls_audit_by_scope ON ls_audit(scope,id)"
+            "CREATE TABLE IF NOT EXISTS ls_audit (id " + auditId + ", scope " + text + " NOT NULL, action VARCHAR(32) NOT NULL, uid BIGINT NULL, profile " + uuid + " NULL, at_millis BIGINT NOT NULL)",
+            // A timeout choice is evidence of a temporary bypass, never evidence of premium ownership.
+            "CREATE TABLE IF NOT EXISTS ls_premium_timeout (scope " + text + " NOT NULL, profile " + uuid + " NOT NULL, player_name VARCHAR(16) NOT NULL, chosen_at BIGINT NOT NULL, PRIMARY KEY(scope,profile))",
+            "CREATE INDEX IF NOT EXISTS ls_audit_by_scope ON ls_audit(scope,id)"
         };
         try (Connection connection = open(); Statement statement = connection.createStatement()) {
             for (String sql : ddl) {
@@ -73,18 +75,42 @@ public final class JdbcSlotRepository implements SlotRepository {
                     }
                 } else statement.execute(sql);
             }
+            int version;
             try (ResultSet result = statement.executeQuery("SELECT version FROM ls_schema WHERE id=1")) {
                 if (result.next()) {
-                    if (result.getInt(1) != 1) throw new SQLException("Unsupported schema version");
-                } else {
-                    statement.executeUpdate(dialect == Dialect.SQLITE
-                            ? "INSERT OR IGNORE INTO ls_schema(id,version) VALUES (1,1)"
-                            : "INSERT IGNORE INTO ls_schema(id,version) VALUES (1,1)");
-                }
+                    version = result.getInt(1);
+                } else version = 0;
             }
+            if (version != 0 && version != 1 && version != 2) throw new SQLException("Unsupported schema version");
+            if (version == 1) statement.executeUpdate("UPDATE ls_schema SET version=2 WHERE id=1");
+            else if (version == 0) statement.executeUpdate(dialect == Dialect.SQLITE
+                    ? "INSERT OR IGNORE INTO ls_schema(id,version) VALUES (1,2)"
+                    : "INSERT IGNORE INTO ls_schema(id,version) VALUES (1,2)");
         } catch (SQLException e) {
             throw new SlotException("Cannot initialize LittleSlot database", e);
         }
+    }
+
+    /** Persist the player's own timeout choice before opening the gate. */
+    public void recordPremiumTimeoutChoice(String scope, UUID profile, String name, long chosenAt) throws SlotException {
+        if (scope == null || !scope.matches("[A-Za-z0-9_.:-]{1,128}") || profile == null
+                || name == null || !name.matches("[A-Za-z0-9_]{1,16}")) throw new IllegalArgumentException("timeout choice");
+        try (Connection db = open(); PreparedStatement update = db.prepareStatement(
+                dialect == Dialect.SQLITE
+                        ? "INSERT INTO ls_premium_timeout(scope,profile,player_name,chosen_at) VALUES (?,?,?,?) ON CONFLICT(scope,profile) DO UPDATE SET player_name=excluded.player_name,chosen_at=excluded.chosen_at"
+                        : "INSERT INTO ls_premium_timeout(scope,profile,player_name,chosen_at) VALUES (?,?,?,?) ON DUPLICATE KEY UPDATE player_name=VALUES(player_name),chosen_at=VALUES(chosen_at)")) {
+            update.setString(1, scope); update.setString(2, profile.toString());
+            update.setString(3, name); update.setLong(4, chosenAt);
+            update.executeUpdate();
+        } catch (SQLException error) { throw new SlotException("Cannot save premium timeout choice", error); }
+    }
+
+    /** A conclusive Mojang answer removes the previous temporary record. */
+    public void clearPremiumTimeoutChoice(String scope, UUID profile) throws SlotException {
+        try (Connection db = open(); PreparedStatement delete = db.prepareStatement(
+                "DELETE FROM ls_premium_timeout WHERE scope=? AND profile=?")) {
+            delete.setString(1, scope); delete.setString(2, profile.toString()); delete.executeUpdate();
+        } catch (SQLException error) { throw new SlotException("Cannot clear premium timeout choice", error); }
     }
 
     @Override

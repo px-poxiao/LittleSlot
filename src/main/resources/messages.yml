@@ -6,7 +6,7 @@
 
 # 玩家 /littleslot help 的用法提示；无占位符。
 # Player usage shown by /littleslot help; no placeholders.
-help-player: '&e/littleslot bind | status | release <UUID>'
+help-player: '&e/littleslot bind | choose <premium|littleskin> | status | release <UUID>'
 
 # 管理员帮助；无占位符。改文案不会增加或改名实际命令。
 # Admin usage; no placeholders. Editing text does not add or rename commands.
@@ -24,13 +24,29 @@ bind-command-hint: '使用 /littleslot bind'
 # Binding reminder; {target} is the verification URL or the command hint above.
 binding-reminder: '&e请完成 LittleSkin 绑定：{target}'
 
-# 未知登录来源且 unknown-source 非 allow 时的踢出原因；无占位符。
-# Kick for unknown login source when unknown-source is not allow; no placeholders.
-kick-unknown-source: '&cLittleSlot: 无法识别本次登录来源。'
+# Mojang 查询超时后的二选一提示；无占位符。选择正版仅本次临时放行，并在下次入服重查。
+# Choice shown after a Mojang timeout; no placeholders. Premium choice allows this join temporarily and is rechecked next join.
+premium-lookup-timeout-choice: '&eLittleSlot: Mojang 查询超时。请用 /littleslot choose premium 选择正版临时放行，或 /littleslot choose littleskin 继续 LittleSkin 验证；下次入服会重新查询。'
 
-# 已判定为 LittleSkin 但适配器未提供原始 UUID 时的踢出原因；无占位符。
-# Kick when a LittleSkin adapter lacks the original profile UUID; no placeholders.
-kick-missing-original-uuid: '&cLittleSlot: 缺少可信原始角色 UUID。'
+# 玩家不在超时选择阶段仍使用 choose 时的提示；无占位符。
+# Shown when choose is used outside the timeout-choice stage; no placeholders.
+premium-choice-not-needed: '&eLittleSlot: 当前无需选择登录方式。'
+
+# choose 参数不正确时的提示；无占位符。
+# Shown for an invalid choose argument; no placeholders.
+premium-choice-usage: '&e用法：/littleslot choose <premium|littleskin>'
+
+# Mojang UUID 与进服 UUID 匹配，按正版放行时的提示；无占位符。
+# Shown when the Mojang UUID matches the joining UUID and the player is admitted as premium; no placeholders.
+premium-admitted: '&aLittleSlot: 正版 UUID 匹配，已放行。'
+
+# Mojang 查询超时后玩家自选正版且临时记录已成功入库时的提示；无占位符。
+# Shown after a premium timeout choice is stored and temporarily allowed; no placeholders.
+premium-temporary-allow: '&eLittleSlot: 已按你的选择临时放行；下次入服仍会重新查询 Mojang。'
+
+# Mojang 返回限流、服务错误或无效内容等非超时故障时的踢出原因；无占位符，稍后可重试。
+# Kick for non-timeout Mojang errors such as rate limiting, service failure, or invalid data; no placeholders.
+kick-premium-lookup-error: '&cLittleSlot: 正版查询暂不可用，请稍后重新入服。'
 
 # 本地数据库无法完成入服名额检查时的踢出原因；无占位符。
 # Kick when the local database cannot check admission; no placeholders.
@@ -52,9 +68,9 @@ guest-allowed: '&eLittleSlot: 当前服务器未强制绑定，本次以游客�
 # Notice while creating a verification URL; no placeholders.
 binding-started: '&eLittleSlot: 请验证角色归属，正在生成绑定地址。'
 
-# 授权账号不拥有当前角色时的提示；无占位符。
-# Notice when the authorized account does not own this profile; no placeholders.
-account-mismatch: '&cLittleSlot: 授权账号不拥有当前角色，请使用 /littleslot bind 重试。'
+# 授权返回的角色列表不包含当前进服 UUID 时的踢出画面；无占位符。
+# Kick screen when the authorized role list omits the joining UUID; no placeholders.
+kick-account-mismatch: '&cLittleSlot: 此 LittleSkin 账号不包含当前进服角色。请使用拥有该角色的账号授权；如果服务器修改了 UUID，请联系服主。'
 
 # 角色被管理员禁止时的踢出原因；无占位符。
 # Kick for an administrator-blocked profile; no placeholders.

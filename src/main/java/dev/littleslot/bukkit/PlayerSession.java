@@ -3,11 +3,10 @@ package dev.littleslot.bukkit;
 import java.util.UUID;
 
 final class PlayerSession {
-    enum State { CHECKING, RESOLVING, BINDING, ADMITTED, TEMPORARY, BYPASS, DENIED }
+    enum State { CHECKING, CHOOSING, RESOLVING, BINDING, ADMITTED, TEMPORARY, BYPASS, DENIED }
 
     final UUID connection = UUID.randomUUID();
     final UUID gameUuid;
-    volatile UUID originalUuid;
     final long joinedAt = System.currentTimeMillis();
     volatile long restrictedSince = joinedAt;
     volatile State state = State.CHECKING;

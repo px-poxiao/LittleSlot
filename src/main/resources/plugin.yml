@@ -3,7 +3,6 @@ version: 0.1.0
 main: dev.littleslot.bukkit.LittleSlotPlugin
 api-version: '1.16'
 description: Limit LittleSkin characters per verified account.
-softdepend: [AuthMe, FastLogin, MultiLogin]
 commands:
   littleslot:
     description: LittleSlot management and binding
