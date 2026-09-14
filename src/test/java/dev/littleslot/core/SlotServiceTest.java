@@ -52,6 +52,20 @@ class SlotServiceTest {
         assertEquals(Decision.BIND_REQUIRED, slots.join("other", a).decision());
     }
 
+    @Test void unrelatedOAuthResultCannotReplaceOwnershipOrAllocateSlot() throws Exception {
+        MutableClock clock = new MutableClock();
+        SlotService slots = service(temporary.resolve("mismatch.db"), clock);
+        UUID joining = UUID.randomUUID(), unrelated = UUID.randomUUID();
+        assertEquals(Decision.ALLOW_NEW,
+                slots.verifyAndJoin("s", joining, verified(1, clock.now, joining)).decision());
+        clock.now += 1000;
+        assertEquals(Decision.ACCOUNT_MISMATCH,
+                slots.verifyAndJoin("s", joining, verified(2, clock.now, unrelated)).decision());
+        assertEquals(Decision.ALLOW_EXISTING, slots.join("s", joining).decision());
+        assertEquals(Long.valueOf(1), slots.join("s", joining).uid());
+        assertEquals(Decision.BIND_REQUIRED, slots.join("s", unrelated).decision());
+    }
+
     @Test void releaseCooldownAndAdminReleaseAreDistinct() throws Exception {
         MutableClock clock = new MutableClock();
         SlotService slots = service(temporary.resolve("release.db"), clock);

@@ -18,6 +18,8 @@ jobs:
         case:
           - name: Slot snapshot allocation
             selector: dev.littleslot.core.SlotServiceTest.fullAccountSnapshotDoesNotAllocateUnusedProfiles
+          - name: Unrelated OAuth result leaves ownership intact
+            selector: dev.littleslot.core.SlotServiceTest.unrelatedOAuthResultCannotReplaceOwnershipOrAllocateSlot
           - name: Release cooldown and admin release
             selector: dev.littleslot.core.SlotServiceTest.releaseCooldownAndAdminReleaseAreDistinct
           - name: Blocks and reduced limits

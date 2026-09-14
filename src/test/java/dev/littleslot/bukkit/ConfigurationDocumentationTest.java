@@ -31,6 +31,8 @@ class ConfigurationDocumentationTest {
         Map<?, ?> messages = parse("messages.yml");
         assertNotNull(config.get("oauth"));
         assertNotNull(config.get("database"));
+        assertNotNull(config.get("premium-compatibility"));
+        assertNotNull(config.get("premium-lookup-timeout-millis"));
         assertNotNull(messages.get("release-result"));
         for (String name : Arrays.asList("config.yml", "messages.yml")) {
             String[] lines = resource(name).split("\\R");
@@ -51,7 +53,9 @@ class ConfigurationDocumentationTest {
                 "kick-full", "oauth-cancelled", "recovery-binding", "query-result", "release-result.ALLOW_EXISTING",
                 "release-result.ACCOUNT_MISMATCH", "release-result.COOLDOWN", "release-result.NOT_ALLOCATED",
                 "adminrelease-success", "adminrelease-empty", "oauth-code-invalid", "oauth-code-expired",
-                "oauth-code-denied", "oauth-code-missing-code", "oauth-code-submitted"))
+                "oauth-code-denied", "oauth-code-missing-code", "oauth-code-submitted",
+                "premium-lookup-timeout-choice", "premium-temporary-allow", "kick-premium-lookup-error",
+                "kick-account-mismatch", "premium-choice-usage"))
             assertTrue(messageKeys.contains(key), "Missing message key: " + key);
         String pluginSource = new String(Files.readAllBytes(Paths.get(
                 "src/main/java/dev/littleslot/bukkit/LittleSlotPlugin.java")), StandardCharsets.UTF_8);
