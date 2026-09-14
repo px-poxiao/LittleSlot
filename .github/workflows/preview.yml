@@ -1,4 +1,4 @@
-name: Test and preview JAR
+name: Tests and preview JAR
 
 on:
   push:
@@ -9,8 +9,65 @@ permissions:
   contents: read
 
 jobs:
-  test-and-build:
-    name: Test and build preview
+  test:
+    name: Test / ${{ matrix.case.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - name: Slot snapshot allocation
+            selector: dev.littleslot.core.SlotServiceTest.fullAccountSnapshotDoesNotAllocateUnusedProfiles
+          - name: Release cooldown and admin release
+            selector: dev.littleslot.core.SlotServiceTest.releaseCooldownAndAdminReleaseAreDistinct
+          - name: Blocks and reduced limits
+            selector: dev.littleslot.core.SlotServiceTest.blockedAndExistingSlotsSurviveLimitReduction
+          - name: Snapshot revocation and ordering
+            selector: dev.littleslot.core.SlotServiceTest.newSnapshotRevokesRemovedProfileAndOldResultCannotOverwriteIt
+          - name: Snapshot expiry
+            selector: dev.littleslot.core.SlotServiceTest.expiredSnapshotRequiresFreshVerificationWithoutReleasingSlot
+          - name: Ownership transfer
+            selector: dev.littleslot.core.SlotServiceTest.newOwnerCanClaimTransferredProfileButOlderResultCannotTakeItBack
+          - name: Concurrent last slot
+            selector: dev.littleslot.core.SlotServiceTest.separateRepositoryInstancesCannotClaimLastSlotTwice
+          - name: Cross-instance audit
+            selector: dev.littleslot.core.SlotServiceTest.anotherRepositoryInstanceCanObserveRevocationEvents
+          - name: Database migration
+            selector: dev.littleslot.core.DatabaseMigratorTest.backupAndImportPreserveSlotsBlocksAndScopeWithoutOverwritingTarget
+          - name: Account response parsing
+            selector: dev.littleslot.oauth.LittleSkinHttpTest.convertsOnlyUidAndProfileIds
+          - name: Malformed account responses
+            selector: dev.littleslot.oauth.LittleSkinHttpTest.rejectsMissingUidAndPartialOrDuplicateLists
+          - name: Code callback state
+            selector: dev.littleslot.oauth.SelfHostedCodeProviderTest.callbackRequiresAnUnconsumedState
+          - name: Public billing and key isolation
+            selector: dev.littleslot.backend.PublicBackendTest.requestIsKeyBoundAndOneSettlementDebitsExactlyOnce
+          - name: Public credit reservation
+            selector: dev.littleslot.backend.PublicBackendTest.pendingRequestReservesLastCreditAndCancellationReleasesIt
+          - name: Configuration documentation
+            selector: dev.littleslot.bukkit.ConfigurationDocumentationTest.configAndMessagesAreValidAndEveryValueHasBilingualComments
+          - name: CI matrix coverage
+            selector: dev.littleslot.bukkit.WorkflowCoverageTest.everyTestMethodHasItsOwnCiJob
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run selected test
+        run: bash ./gradlew test --tests '${{ matrix.case.selector }}' --no-daemon
+
+  build:
+    name: Build preview JAR
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
@@ -27,8 +84,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Run tests and build preview JAR
-        run: bash ./gradlew test jar --no-daemon
+      - name: Build preview JAR
+        run: bash ./gradlew jar --no-daemon
 
       - name: Upload preview JAR
         uses: actions/upload-artifact@v7
