@@ -8,6 +8,7 @@ version = '0.1.0-SNAPSHOT'
 repositories {
     mavenCentral()
     maven { url = uri('https://hub.spigotmc.org/nexus/content/repositories/snapshots/') }
+    maven { url = uri('https://repo.extendedclip.com/releases/') }
 }
 
 java {
@@ -23,6 +24,7 @@ tasks.withType(JavaCompile).configureEach {
 
 dependencies {
     compileOnly 'org.spigotmc:spigot-api:1.16.5-R0.1-SNAPSHOT'
+    compileOnly 'me.clip:placeholderapi:2.11.6'
     implementation 'com.google.code.gson:gson:2.11.0'
     runtimeOnly 'org.xerial:sqlite-jdbc:3.49.1.0'
     runtimeOnly 'com.mysql:mysql-connector-j:8.4.0'

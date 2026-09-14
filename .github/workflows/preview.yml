@@ -42,6 +42,8 @@ jobs:
             selector: dev.littleslot.bukkit.MojangLookupTest.validProfileIsMatchedWhile404IsTheOnlyMissingResult
           - name: Mojang lookup timeout
             selector: dev.littleslot.bukkit.MojangLookupTest.timeoutIsDistinguishedFromOtherFailures
+          - name: Placeholder values from current sessions
+            selector: dev.littleslot.bukkit.PlaceholderValuesTest.displaysOnlyCurrentAdmittedSlotDataAndNeverInventsPremiumSlots
           - name: Account response parsing
             selector: dev.littleslot.oauth.LittleSkinHttpTest.convertsOnlyUidAndProfileIds
           - name: Malformed account responses

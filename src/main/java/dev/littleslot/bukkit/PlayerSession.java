@@ -11,6 +11,8 @@ final class PlayerSession {
     volatile long restrictedSince = joinedAt;
     volatile State state = State.CHECKING;
     volatile Long uid;
+    volatile Integer used;
+    volatile Integer limit;
     volatile long admittedAt;
     volatile String bindUrl;
 

@@ -64,6 +64,7 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
     private String scope;
     private long lastAuditId;
     private long nextRecoveryAt;
+    private Runnable placeholderCleanup;
 
     @Override public void onEnable() {
         saveDefaultConfig();
@@ -105,6 +106,11 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
                         key -> message("oauth-code-" + key));
             Bukkit.getPluginManager().registerEvents(this, this);
             getCommand("littleslot").setExecutor(this);
+            if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+                LittleSlotPlaceholderExpansion expansion = new LittleSlotPlaceholderExpansion(this);
+                if (expansion.register()) placeholderCleanup = expansion::unregister;
+                else getLogger().warning("PlaceholderAPI could not register LittleSlot placeholders");
+            }
             Bukkit.getScheduler().runTaskTimer(this, this::tick, 20L, 20L);
             Bukkit.getScheduler().runTaskTimer(this, this::pollAudit, 40L, 40L);
             getLogger().info("LittleSlot ready; premium compatibility="
@@ -116,6 +122,10 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
     }
 
     @Override public void onDisable() {
+        if (placeholderCleanup != null) {
+            placeholderCleanup.run();
+            placeholderCleanup = null;
+        }
         for (AuthorizationSession auth : authorizations.values()) auth.cancel();
         authorizations.clear();
         if (oauth != null) oauth.close();
@@ -231,6 +241,8 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
         Decision decision = admission.decision();
         if (admission.allowed()) {
             session.uid = admission.uid();
+            session.used = admission.used();
+            session.limit = admission.limit();
             session.admittedAt = System.currentTimeMillis();
             session.state = PlayerSession.State.ADMITTED;
             player.sendMessage(message("admitted", "used", Integer.toString(admission.used()), "limit",
@@ -321,6 +333,9 @@ public final class LittleSlotPlugin extends JavaPlugin implements Listener, Comm
         PlayerSession session = sessions.get(gameUuid);
         return session != null && session.connection.equals(connection) ? session : null;
     }
+
+    PlayerSession placeholderSession(UUID gameUuid) { return sessions.get(gameUuid); }
+    String placeholderScope() { return scope; }
 
     private void checkTemporaryRecovery(long now) {
         long interval = Math.max(15, getConfig().getLong("recovery-check-seconds", 60)) * 1000L;
